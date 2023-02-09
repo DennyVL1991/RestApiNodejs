@@ -1,22 +1,54 @@
-const {response} = require('express');
+import {response} from 'express';
+import bcrypt from 'bcryptjs';
 
-const usuariosGet = (req, res=response) => {
-    res.json({
-        msg:' Methode GET'
+import {Usuario} from '../models/usuario.js';
+
+
+const usuariosGet = async(req, res=response) => {
+
+  const { cant=5 , star=0 } = req.query;
+  const activs = {estado:true};
+
+  const [usuarios, total] = await Promise.all([
+    Usuario.find(activs)
+    .skip(Number(star))
+    .limit(Number(cant)),
+    Usuario.countDocuments(activs)
+  ]);
+
+  res.json({
+      usuarios,
+      total
     });
   }
 
-const usuarioPost = (req, res) => {
-    res.json({
-        msg:' Methode POST'
-    });
+const usuarioPost = async(req, res) => {
+
+  const { nombre , email , password , role } = req.body;
+  const usuario = new Usuario({ nombre , email , password , role });
+
+   const salt = bcrypt.genSaltSync();
+   usuario.password = bcrypt.hashSync(password,salt);
+
+   await usuario.save();
+
+    res.json({ usuario });
   }
 
 
-const usuarioPut = (req, res) => {
-    res.json({
-        msg:' Methode PUT'
-    });
+const usuarioPut = async(req, res) => {
+
+  const { id } = req.params;
+  const { password , email, google , ...rest} = req.body;
+
+  if(password){
+  const salt = bcrypt.genSaltSync();
+  rest.password = bcrypt.hashSync( password , salt );
+  }
+
+  const usuario = await Usuario.findByIdAndUpdate( id , rest );
+
+    res.json({ usuario });
   }
 
 const usuarioPatch = (req, res) => {
@@ -26,15 +58,17 @@ const usuarioPatch = (req, res) => {
   }
 
 
-const usuarioDelete = (req, res) => {
-    res.json({
-        msg:' Methode DELETE'
-    });
+const usuarioDelete = async (req, res) => {
+
+  const { id } = req.params;
+  const usuario = await Usuario.findByIdAndUpdate( id, {estado:false} );
+
+    res.json({ usuario });
   }
 
 
 
-  module.exports = {
+  export  {
     usuariosGet,
     usuarioPost,
     usuarioPut,
